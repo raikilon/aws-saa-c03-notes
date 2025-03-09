@@ -30,7 +30,7 @@ Three zones:
 - VPC AWS (private) - Can connect to on-premises networks
 - AWS Public Zone - Not on public internet but connected to it. Hosts public services like S3
 
-![alt text](images/images/publicvsprivatenetwork.png)
+![alt text](images/publicvsprivatenetwork.png)
 
 ---
 
@@ -51,13 +51,13 @@ Resilience levels:
 - AZ resilient - Resilient only to single AZ outages
 
 ## ARN (Amazon Resource Name)
-![alt text](images/images/arn-object-vs-elements.png)
+![alt text](images/arn-object-vs-elements.png)
 
 ### Key Differences:
 - `/*` refers to **objects** within a resource.
 - Without `/*` refers to the **resource itself**.
 
-![alt text](images/images/scp.png)
+![alt text](images/scp.png)
 
 ## Virtualization 
 
@@ -93,13 +93,13 @@ Virtualization allows multiple operating systems to run on the same hardware.
 
 Understanding management responsibilities is critical.
 
-![alt text](images/images/shared-responsability-model.png)
+![alt text](images/shared-responsability-model.png)
 
 
 - AWS is responsible for **security OF the cloud** (global infrastructure and software).
 - Customers are responsible for **security IN the cloud** (configurations, data, and access management).
 
-![alt text](images/images/shared-responsability-model-stack.png)
+![alt text](images/shared-responsability-model-stack.png)
 
 ---
 
@@ -123,7 +123,7 @@ At the regional level, there are different tiers. Users typically enter through 
 
 The compute tier consists of containers, Lambda functions, etc., which interact with the storage tier or a cache tier before accessing the database tier.
 
-![alt text](images/images/region-architecture-tiers.png)
+![alt text](images/region-architecture-tiers.png)
 
 ---
 
@@ -201,7 +201,7 @@ A distinct identity type in AWS, different from IAM users. While an IAM user rep
 - **Mobile Applications**: Role-based access for social media authentication (Google, Facebook, Twitter).
 - **Partner Access**: Cross-account permissions for business partners.
 
-![alt text](images/images/lambda-execution-iam-role.png)
+![alt text](images/lambda-execution-iam-role.png)
 
 ### Key Benefits:
 - No credential management required.
@@ -282,7 +282,7 @@ Provides a quick and easy setup of a multi-account environment (**landing zone**
 - **Account Factory**: Automates and standardizes new account creation.
 - **Dashboard**: Provides single-page oversight for the entire organization.
 
-![alt text](images/images/control-tower.png)
+![alt text](images/control-tower.png)
 
 ### Landing Zone
 
@@ -332,7 +332,7 @@ Provides automated account provisioning that can be initiated by:
 
 Some metrics are collected automatically, while others require an agent installation.
 
-![](images/images/cloudwatch.png)
+![](images/cloudwatch.png)
 
 ## Components:
 - **Namespace**: A container for information; AWS services use the format `AWS/Service` (e.g., `AWS/EC2`).
@@ -347,7 +347,7 @@ A public service that can be accessed from both VPC and on-premises environments
 
 Stores, monitors, and provides access to logging data. It has extensive built-in integrations with many AWS services.
 
-![alt text](images/images/claudwatch-logs-architecture.png)
+![alt text](images/claudwatch-logs-architecture.png)
 
 | Feature         | Log Group | Log Stream |
 |---------------|------------|------------|
@@ -524,7 +524,7 @@ When to use static hosting:
 
 Versioning is disabled by default. Once enabled, it cannot be disabled, only suspended.
 
-![alt text](images/images/s3-versioning.png)
+![alt text](images/s3-versioning.png)
 
 Versioning allows you to store multiple versions of objects within a bucket. If you modify the content, S3 generates a new version, and the latest version becomes the current version. You can retrieve a specific version by providing its version ID.
 
@@ -554,9 +554,9 @@ Buckets are not encrypted, but objects are. Data in transit between the user and
 - **Client-side encryption**: Encrypt everything so that S3 never sees the content. We are responsible for the keys. We use S3 only for storage.
 - **Server-side encryption**: During transfer, data is inside an encrypted channel, but once it reaches S3, it is decrypted and then re-encrypted before being stored.
     - **SSE-C**: Uses customer-provided keys. The difference from client-side encryption is that encryption operations are performed by S3, offloading the CPU load to AWS while requiring trust in AWS with unencrypted data.
-    ![alt text](images/images/sse-c-s3.png)
+    ![alt text](images/sse-c-s3.png)
     - **SSE-S3**: The default encryption method that uses AWS S3-managed keys. An S3 full admin can decrypt the data. It uses AES-256 encryption.
-    ![alt text](images/images/sse-s3.png)
+    ![alt text](images/sse-s3.png)
     - **SSE-KMS**: Uses keys stored in KMS, providing better role separation. To decrypt data, access to KMS is required, meaning an S3 admin alone cannot decrypt it.
     ![alt text](images/sse-kms-s3.png)
 
