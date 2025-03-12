@@ -127,7 +127,7 @@ The compute tier consists of containers, Lambda functions, etc., which interact 
 
 ---
 
-# IAM
+# IAM (Identity and Access Management)
 
 ## IAM Policies
 
@@ -215,7 +215,7 @@ IAM roles created for specific AWS services (predefined by AWS).
 They are usually created by the service itself, or the service allows you to create them.
 
 - **You cannot delete a service-linked role until it is no longer needed by the service**.
-- `PassRole` allows a user to configure a service with a role but **does not grant permission to modify the role** → ensures role separation.
+- `PassRole` allows a user to configure a service with a role but **does not grant permission to modify the role** → ensures role separation (you need also permission to add a role to a service).
 
 
 # AWS Organizations
@@ -319,13 +319,12 @@ Provides automated account provisioning that can be initiated by:
 - Automatically applies guardrails to new accounts.
 - Configures network settings automatically.
 - Streamlines the account request and creation process.
-- 
 
 ---
 
 # CloudWatch
 
-- Collects and manages operational data.
+Collects and manages operational data.
 - **Metrics**: Tracks performance indicators (CPU, disk, RPS, etc.), including on-premises monitoring.
 - **CloudWatch Logs**: Monitors and stores log data.
 - **CloudWatch Events**: Captures service events or scheduled events.
@@ -404,7 +403,7 @@ Keys never leave KMS, and it provides **FIPS 140-2 L2** (a U.S. security standar
 - **Description**
 - **State**
 
-Keys can be **generated** or **imported**, and they can be used for up to **4KB of data** → suitable for encrypting small bits of data or creating other keys. We can assign an **alias** to a key.
+Keys can be **generated** or **imported** (or store in CloudHSM), and they can be used for up to **4KB of data** → suitable for encrypting small bits of data or creating other keys. We can assign an **alias** to a key.
 
 Everything stored on disk is **encrypted**, but **in-memory** data could be in **plaintext**.
 
@@ -510,7 +509,7 @@ You can:
 
 ## Static Hosting
 
-By default, access to S3 is via AWS APIs, but for static hosting, HTTP access is required. You need to enable this feature, and AWS will create a website endpoint. Additionally, you need to specify an index document, and optionally, an error document.
+By default, S3 is accessed via AWS APIs. To enable static website hosting, you must activate this feature, which generates a website endpoint. You also need to specify an index document and, optionally, an error document.
 
 If using a custom domain via Route 53, the bucket name must match the domain name.
 
@@ -523,8 +522,6 @@ When to use static hosting:
 ## Object Versioning
 
 Versioning is disabled by default. Once enabled, it cannot be disabled, only suspended.
-
-![alt text](images/s3-versioning.png)
 
 Versioning allows you to store multiple versions of objects within a bucket. If you modify the content, S3 generates a new version, and the latest version becomes the current version. You can retrieve a specific version by providing its version ID.
 
@@ -734,7 +731,7 @@ A user in our application generates this URL and returns it to the requesting us
 ### Important notes:
 - You can create a presigned URL for an object **you do not have access to** and even for objects that **do not exist**.
 - When using a presigned URL, **permissions match** the identity that generated it.
-- **Do not use roles** to generate presigned URLs because when the temporary credentials for the role expire, the URL also becomes invalid.
+- **Do not use roles** to generate presigned URLs because when the temporary credentials for the role expire, the URL also becomes invalid (use IAM user).
 - **Default expiration** is **3600 seconds (1 hour)**, but it can be modified.
 - Presigned URLs can be used for both **uploads (PUT)** and **downloads (GET)**.
 
@@ -750,7 +747,6 @@ Allows retrieving specific portions of an object. For example, if an object is *
 - **Reduces costs** by transferring only necessary data
 - Works with objects stored in **Glacier** through **S3 Glacier Select**
 
----
 
 ## Events
 
@@ -778,7 +774,7 @@ We want to monitor activities related to the bucket and its objects and store th
 
 ## Object Lock
 
-You can enable Object Lock on new buckets (for existing ones, you need to contact AWS Support). Once enabled, it cannot be disabled, and it requires versioning.
+You can enable Object Lock on new buckets (for existing ones, you need to contact AWS Support). Once enabled, it cannot be disabled (you can add a retention policy on a object), and it requires versioning.
 
 Write Once Read Many (WORM) -> No delete, no overwrite.
 
@@ -809,9 +805,9 @@ Additional notes:
 
 ## Access Points
 
-Access Points simplify access management for S3 buckets and objects. Instead of having a single bucket policy, you can create multiple access points, each with its own access point policy and network access controls.
+Access Points simplify access management for S3 buckets and objects. Instead of having a single bucket policy, you can create multiple access points, each with its own access point policy and network access controls. 
 
-You can have multiple access point policies for different access types instead of a single, larger policy.
+Each S3 Access Point has its own unique DNS address, allowing network-level access control (e.g., IP filtering, VPC restrictions) to block unauthorized requests before authentication.
 
 ---
 
@@ -821,7 +817,7 @@ You can have multiple access point policies for different access types instead o
 - Private and isolated by default
 - Types: Default VPC (1 per region) and Custom VPC (multiple per region)
 - CIDR defines IP ranges: single CIDR for default VPC, multiple possible for custom VPCs
-- Each AZ in the region contains at least one subnet
+- An AZ can have zero, one, or multiple subnets – If you don't create a subnet in an AZ, that AZ remains unused within that VPC.
 
 ![alt text](images/vpc.png)
 
@@ -854,15 +850,15 @@ To choose the right range, we need to answer these questions:
 
 ## Custom VPC
 
-A **Regional Service** (available in all AZs in the region) that provides an **isolated network**—nothing enters or exits without explicit configuration.
+A **Regional Service** (available in all AZs in the region) that provides an **isolated network**. Nothing enters or exits without explicit configuration.
 
 VPCs are **highly flexible** and can connect to other cloud providers and on-premises networks.
 
 A VPC can have:
-- **Default Tenancy** (you choose how resources are placed)
-- **Dedicated Tenancy** (all resources must run on dedicated hardware)
+- **Default Tenancy** You control how resources are placed, with instances running on shared hardware by default.
+- **Dedicated Tenancy** All resources are required to run on dedicated hardware, ensuring isolation from other AWS customers.
 
-Each VPC has **one primary private IPv4 CIDR block** (minimum **/28**, maximum **/16**). You can **add additional** optional IPv4 blocks.
+Each VPC has **one primary private IPv4 CIDR block** (minimum **/28**, maximum **/16**). After creating a VPC, you can add up to four additional IPv4 CIDR blocks (making it a total of five) to expand your address space.
 
 For IPv6, AWS assigns a **/56 CIDR block** (or you can bring your own).  
 > Unlike IPv4, **all IPv6 addresses are public**—there's no private/public distinction.
@@ -870,9 +866,8 @@ For IPv6, AWS assigns a **/56 CIDR block** (or you can bring your own).
 **DNS Configuration:**
 - Provided by **Route 53** → Uses **Base IP +2** for DNS.
 - Two configurable options:
-  - **enableDnsHostnames** (gives instances DNS names)
-  - **enableDnsSupport** (enables DNS resolution in the VPC)
-- These options can cause issues, so it's important to understand them.
+  - **enableDnsHostnames** (Default: false) Assigns public DNS hostnames to instances that have public IPs
+  - **enableDnsSupport**  (Default: true) Controls whether the VPC uses the AWS DNS resolver (Base IP +2)
 
 
 ## VPC Subnets
@@ -922,7 +917,7 @@ A **region-resilient gateway** attached to a **VPC**, covering **all AZs** in th
 - It runs inside the **AWS public zone** and acts as a gateway between the **VPC and the internet/AWS public zone**.
 - We can **reference it inside our route table**.
 
-
+A Public Subnet Has a Route Table entry pointing 0.0.0.0/0 to the IGW.
 ## IPv4 Addresses with an IGW
 
 - The **public IPv4** assigned to a service **never directly touches** the service inside the VPC.
@@ -975,7 +970,7 @@ A **traditional firewall** inside a **VPC**.
 - Often used **with Security Groups** to add **explicit DENY rules** (e.g., block bad IPs).
 - **A NACL can be associated with multiple subnets,** but a **subnet can only have one NACL**.
 
-## VPC Security Groups (SG)
+## Security Groups (SG)
 
 ### Key Differences from NACLs:
 - **NACLs are stateless**, **SGs are stateful**.
@@ -983,7 +978,7 @@ A **traditional firewall** inside a **VPC**.
 - **SGs cannot block specific actors** (this is why **SGs and NACLs are often used together**).
 
 ### Security Group Behavior:
-- **Attached to ENIs (Elastic Network Interfaces), not subnets or instances**.
+- **Attached to ENIs (Elastic Network Interfaces), not subnets or instances (Instance-Level Networking, Each instance must have at least one primary ENI)**.
 - **Can specify another Security Group as a source**.
   - Example: If **SG A allows access from SG B**, all resources in **SG B** can communicate with **SG A**.
   - This is useful for **scaling services dynamically**.
@@ -1027,7 +1022,8 @@ A **process for remapping source/destination IPs** that **allows private CIDR ra
 
 ### IPv6 & NAT
 - **NAT is not required for IPv6** (**does not work with IPv6**).
-- Instead, use **an Internet Gateway (IGW) and route `::/0` for bidirectional connectivity**.
+- Instead, use **an Internet Gateway (IGW) and route `::/0` for bidirectional connectivity**. 
+- IPv6 is globally routable, meaning there are no truly "private" IPv6 addresses in a VPC like with IPv4, but inbound traffic can be restricted while allowing outbound connectivity using an Egress-Only Internet Gateway (EIGW).
 
 ## VPC Flow Logs
 
@@ -1070,14 +1066,14 @@ Allows outbound-only connections from the **VPC to the internet**.
 - **Not highly available by default**—each **Interface Endpoint is tied to a specific subnet in an AZ**. If that AZ fails, the endpoint goes down. You must **deploy it across multiple AZs** for resilience.
 - Controlled using **Security Groups** and **Endpoint Policies**.
 - Works **only with TCP and IPv4**.
-- Uses **AWS PrivateLink**, enabling private connectivity to AWS services over the AWS backbone.
-- Provides **Regional DNS** and **Zonal DNS**, along with **Private DNS** that can override default DNS settings so applications do not need modification.
+- Uses **AWS PrivateLink**, enabling private connectivity to AWS services over the AWS backbone. AWS PrivateLink is a service that enables private, VPC-internal access to AWS services without exposing traffic to the internet, by routing requests through an Interface Endpoint (ENI) inside your VPC.
+- Provides Regional DNS (accessible from any subnet in the AWS region), Zonal DNS (specific to a single Availability Zone for low-latency access), and Private DNS, which overrides the default public AWS service DNS to route traffic through the private ENI in the VPC, ensuring applications can connect privately without modification.
 
 ![alt text](images/interface-endpoints.png)
 
 #### Key Differences:
 - **Gateway Endpoints** → Use **route tables** (no app modification needed).
-- **Interface Endpoints** → Use **DNS** (app may need modification, or you can use Private DNS to override default DNS). For s3 you can reach other regions. You have also fine-grained access control using security groups.
+- **Interface Endpoints** → Use **DNS** (app may need modification, or you can use Private DNS to override default DNS). For s3 you can reach other regions. You have also fine-grained access control using security groups. Interface Endpoints with PrivateLink create additional ENIs to route private service traffic.
 
 ## VPC Peering
 
@@ -1089,6 +1085,53 @@ Allows outbound-only connections from the **VPC to the internet**.
 - **CIDR ranges must not overlap**.
 
 ![alt text](images/vpc-peering.png)
+
+## Transit Gateway (TGW)
+
+A **network transit hub** that allows you to connect multiple VPCs and on-premises networks. It reduces network complexity by allowing **transitive routing** via a central hub. You create attachments to other networks (e.g., VPC attachments, site-to-site VPN attachments, etc.).
+
+Before TGW, connecting multiple VPCs and on-premises networks often required a complex mesh of direct connections, which was hard to scale. With TGW, you attach each VPC or on-premises connection to the transit gateway, and traffic can flow transitively. You can even connect TGWs across Regions or accounts.
+
+![alt text](images/tgw.png)
+
+
+## Storage Gateway
+
+### Volume Mode
+
+Storage Gateway can be deployed as a hardware appliance or, more commonly, as a virtual machine. It presents storage via iSCSI, NFS, or SMB and integrates with EBS, S3, and Glacier. Common use cases include migrations, storage extension/tiering, and backups.
+
+- **Stored Volume mode**:  
+  The gateway presents volumes (via iSCSI) backed by **local** storage. All data is stored locally and then asynchronously uploaded to AWS through the gateway’s upload buffer. This is useful for full disk backups with quick on-premises restores. However, it doesn’t extend on-premises storage capacity since all data must fit locally.
+
+  ![alt text](images/volume-gateaway-store-mode.png)
+
+- **Cached Volume mode**:  
+  The primary data location is in AWS (S3 in a hidden bucket), while the local disk acts as a **cache**. Frequently accessed data is cached locally, and the rest resides in S3. This is useful for extending on-premises storage capacity.
+
+  ![alt text](images/volume-gateway-cache-mode.png)
+
+### Tape (VTL) Mode
+
+Physical tape libraries are commonly used for large backups (e.g., LTO-9, which officially supports ~18 TB native / ~45 TB compressed, though some vendors claim 24 TB / 60 TB compressed). A tape drive may or may not have a tape inserted, while a tape robot/loader moves tapes in or out of the drive.
+
+Tape backups are **sequential** rather than random-access. The backup server typically connects via iSCSI to the tape drives.
+
+![alt text](images/classic-tape-backups.png)
+
+With **Tape Gateway**, you replace physical tapes/drives with virtual tapes/drives stored in AWS. Data is saved to S3, and archived tapes are stored in Glacier. Virtual tapes are 100 GiB in size, and you can have up to 1 PB across 1500 virtual tapes. The archive (Glacier) capacity is effectively unlimited.
+
+![alt text](images/aws-tape-backups.png)
+
+The gateway **emulates** an iSCSI tape library, changer, and drive.
+
+### File Mode
+
+Presents on-premises file storage via **NFS** or **SMB**, directly mapping to an S3 bucket (bidirectional). A local cache stores frequently accessed data.
+
+![alt text](images/storage-gateway-file-mode.png)
+
+You can map the S3 bucket to multiple on-premises locations. When uploading, **NotifyWhenUploaded** events can trigger further actions. Note that there is no built-in file locking across multiple locations. You can also replicate S3 data across Regions for high availability and use lifecycle policies to move data to different storage classes.
 
 
 # EC2 - Elastic Compute Cloud 
@@ -3215,57 +3258,6 @@ If you run a VPN **over** Direct Connect, you get the best of both worlds: secur
 
 - With DX alone (no VPN): You need VIFs (Private VIF for VPC access, Public VIF for AWS public services).
 - With DX + VPN: You primarily need a public VIF, as AWS VPN endpoints are public. The VPN then provides the secure connection to your VPC.
-
----
-
-# Transit Gateway (TGW)
-
-A **network transit hub** that allows you to connect multiple VPCs and on-premises networks. It reduces network complexity by allowing **transitive routing** via a central hub. You create attachments to other networks (e.g., VPC attachments, site-to-site VPN attachments, etc.).
-
-Before TGW, connecting multiple VPCs and on-premises networks often required a complex mesh of direct connections, which was hard to scale. With TGW, you attach each VPC or on-premises connection to the transit gateway, and traffic can flow transitively. You can even connect TGWs across Regions or accounts.
-
-![alt text](images/tgw.png)
-
-
----
-
-# Storage Gateway
-
-## Volume Mode
-
-Storage Gateway can be deployed as a hardware appliance or, more commonly, as a virtual machine. It presents storage via iSCSI, NFS, or SMB and integrates with EBS, S3, and Glacier. Common use cases include migrations, storage extension/tiering, and backups.
-
-- **Stored Volume mode**:  
-  The gateway presents volumes (via iSCSI) backed by **local** storage. All data is stored locally and then asynchronously uploaded to AWS through the gateway’s upload buffer. This is useful for full disk backups with quick on-premises restores. However, it doesn’t extend on-premises storage capacity since all data must fit locally.
-
-  ![alt text](images/volume-gateaway-store-mode.png)
-
-- **Cached Volume mode**:  
-  The primary data location is in AWS (S3 in a hidden bucket), while the local disk acts as a **cache**. Frequently accessed data is cached locally, and the rest resides in S3. This is useful for extending on-premises storage capacity.
-
-  ![alt text](images/volume-gateway-cache-mode.png)
-
-## Tape (VTL) Mode
-
-Physical tape libraries are commonly used for large backups (e.g., LTO-9, which officially supports ~18 TB native / ~45 TB compressed, though some vendors claim 24 TB / 60 TB compressed). A tape drive may or may not have a tape inserted, while a tape robot/loader moves tapes in or out of the drive.
-
-Tape backups are **sequential** rather than random-access. The backup server typically connects via iSCSI to the tape drives.
-
-![alt text](images/classic-tape-backups.png)
-
-With **Tape Gateway**, you replace physical tapes/drives with virtual tapes/drives stored in AWS. Data is saved to S3, and archived tapes are stored in Glacier. Virtual tapes are 100 GiB in size, and you can have up to 1 PB across 1500 virtual tapes. The archive (Glacier) capacity is effectively unlimited.
-
-![alt text](images/aws-tape-backups.png)
-
-The gateway **emulates** an iSCSI tape library, changer, and drive.
-
-## File Mode
-
-Presents on-premises file storage via **NFS** or **SMB**, directly mapping to an S3 bucket (bidirectional). A local cache stores frequently accessed data.
-
-![alt text](images/storage-gateway-file-mode.png)
-
-You can map the S3 bucket to multiple on-premises locations. When uploading, **NotifyWhenUploaded** events can trigger further actions. Note that there is no built-in file locking across multiple locations. You can also replicate S3 data across Regions for high availability and use lifecycle policies to move data to different storage classes.
 
 ---
 # Data Transfer
