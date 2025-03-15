@@ -1095,11 +1095,13 @@ Before TGW, connecting multiple VPCs and on-premises networks often required a c
 ![alt text](images/tgw.png)
 
 
-## Storage Gateway
+# Storage Gateway
 
-### Volume Mode
+The gateway should be placed in a private subnet for security. It will connect to AWS over a secure connection (using AWS Direct Connect, VPN, or a NAT Gateway for internet access).
 
-Storage Gateway can be deployed as a hardware appliance or, more commonly, as a virtual machine. It presents storage via iSCSI, NFS, or SMB and integrates with EBS, S3, and Glacier. Common use cases include migrations, storage extension/tiering, and backups.
+## Volume Mode
+
+Storage Gateway can be deployed as a hardware appliance or, more commonly, as a virtual machine. It presents storage via iSCSI (block storage), NFS, or SMB and integrates with EBS, S3, and Glacier. Common use cases include migrations, storage extension/tiering, and backups.
 
 - **Stored Volume mode**:  
   The gateway presents volumes (via iSCSI) backed by **local** storage. All data is stored locally and then asynchronously uploaded to AWS through the gateway’s upload buffer. This is useful for full disk backups with quick on-premises restores. However, it doesn’t extend on-premises storage capacity since all data must fit locally.
@@ -1111,7 +1113,7 @@ Storage Gateway can be deployed as a hardware appliance or, more commonly, as a 
 
   ![alt text](images/volume-gateway-cache-mode.png)
 
-### Tape (VTL) Mode
+## Tape (VTL) Mode
 
 Physical tape libraries are commonly used for large backups (e.g., LTO-9, which officially supports ~18 TB native / ~45 TB compressed, though some vendors claim 24 TB / 60 TB compressed). A tape drive may or may not have a tape inserted, while a tape robot/loader moves tapes in or out of the drive.
 
@@ -1125,7 +1127,7 @@ With **Tape Gateway**, you replace physical tapes/drives with virtual tapes/driv
 
 The gateway **emulates** an iSCSI tape library, changer, and drive.
 
-### File Mode
+## File Mode
 
 Presents on-premises file storage via **NFS** or **SMB**, directly mapping to an S3 bucket (bidirectional). A local cache stores frequently accessed data.
 
@@ -1139,14 +1141,14 @@ Amazon EC2 is an **Infrastructure as a Service (IaaS)** offering that provides *
 
 ### Key Characteristics
 - **Instances as the Unit of Cost** – Charges are based on the chosen instance type and billing model. 
-- **Private by Default** – Instances launch within a **VPC (Virtual Private Cloud)** and require network configurations for public accessibility. 
+- **Private by Default** – Instances launch within a **VPC** and require network configurations for public accessibility. 
 - **AZ Resilience** – Each EC2 instance runs in a **single Availability Zone (AZ)**, but **resilience** can be improved using features like **Auto Scaling Groups (ASG)** and **Elastic Load Balancing (ELB)**. 
 - **Flexible Deployment** – Users can choose **instance sizes, CPU, RAM, storage, and networking options**. 
 
 ### Billing and Storage Options
 - **Billing Models:** On-Demand, Reserved, Spot, Dedicated Hosts, Savings Plans.  
 - **Storage Options:** 
-  - **Ephemeral Instance Store** (local, non-persistent storage, lost on stop/terminate). 
+  - **Ephemeral Instance Store** (local, non-persistent block storage, lost on stop/terminate). 
   - **Elastic Block Store (EBS)** (persistent storage, attached separately). 
 
 ## EC2 Instance States
@@ -1165,12 +1167,6 @@ An **AMI (Amazon Machine Image)** is a **blueprint for launching EC2 instances**
 - **Block Device Mapping** – Defines attached storage volumes.  
 - **Permissions** – AMIs can be **public, private (owner-only), or shared with specific AWS accounts**.  
 
-### AMI Creation & Usage  
-
-- **Launch an EC2 instance from an AMI.**  
-- **Create an AMI from an existing EC2 instance.**  
-- **Before an AMI can be used, the instance must pass AWS health checks** (system status check and instance status check).  
-
 ### AMI Sources  
 
 An AMI can come from different sources:  
@@ -1184,6 +1180,7 @@ An AMI can come from different sources:
 - **By default, AMIs are private** – they are only accessible by the owner’s AWS account, but can be made public or shared with specific accounts.  
 - **AMIs can be created from an existing EC2 instance** – this includes capturing the current configuration.  
 - **Creating an AMI involves snapshotting EBS volumes** – the AMI references these snapshots in its block device mapping.  
+- **Before an AMI can be used, the instance must pass AWS health checks** (system status check and instance status check).  
 
 ### AMI Creation Process  
 
@@ -1247,15 +1244,13 @@ Example: **R5dn.8xlarge**
 
 - **Direct/local attached storage**: Storage on the EC2 host (instance store) → if hardware fails, data is lost.
 - **Network attached storage**: Volumes delivered over the network (EBS) → this is persistent storage.
-- **Ephemeral storage**: Temporary storage.
-- **Persistent storage**: Permanent storage (persists beyond the lifetime of the instance).
-
 - **Block storage**: Volume presented as a collection of blocks, no structure, mountable and bootable (OS creates a file system on it) → EBS volume.
 - **File storage**: Presented as a file share and has structure, mountable but NOT bootable.
 - **Object storage**: Collection of objects, flat structure, NOT mountable and NOT bootable → highly scalable.
 
 ### Storage Performance
-Storage performance is also influenced by other components in the system.
+In AWS, IOPS (Input/Output Operations Per Second) measures the number of operations per second, while throughput measures data transfer rate (MB/s). Block size impacts throughput but does not change the total IOPS, which is determined by the storage type and configuration.
+
 ![alt text](images/storage-performance.png)
 
 ## Elastic Block Store (EBS)
@@ -1281,19 +1276,18 @@ Blocks can be accessed by block IDs and can be encrypted using KMS. Instances ca
 - **For volumes > 1,000GB**, the baseline is higher than the burst, and pricing changes (no credit system, up to **16,000 IOPS**).
 - **Best for**: Boot volumes, low-latency interactive apps, development, and testing.
 
+GP2 does not have a fixed block size, but AWS calculates IOPS based on 256 KB blocks.  A gp2 volume under 1,000 GiB with burst credits available has an IOPS limit of 3,000 and a volume throughput limit of 250 MiB/s. If you are using a 256 KiB I/O size, your volume reaches its throughput limit at 1000 IOPS (1000 x 256 KiB = 250 MiB).
+
 ### GP3 SSD
 
-- **3000 IOPS & 125 MiB/s** by default (cheaper than GP2).
+- **3000 IOPS & 125 MiB/s** by default (cheaper than GP2). No bursting, no credit depletion—you.
 - By paying more, **up to 16,000 IOPS or 1,000 MiB/s** (faster than GP2’s max of **250 MiB/s**).
 - With **GP3, extra IOPS must be explicitly provisioned** (unlike GP2, where IOPS scale automatically).
 
 ### io1/io2/BlockExpress
 
-Provisioned IOPS SSD with **independent IOPS adjustment from volume size** and **low latency**.
+Provisioned IOPS SSD with **independent IOPS adjustment from volume size** and **low latency**. IOPS are delivered consistently, regardless of workload. No bursting, no credit system—you always get the IOPS you pay for.
 
-- **io1**: Max **50 IOPS/GB**.
-- **io2**: Max **500 IOPS/GB**.
-- **BlockExpress**: Max **1,000 IOPS/GB**.
 
 | Feature               | io1                 | io2                 | io2 Block Express         |
 |-----------------------|--------------------|--------------------|--------------------------|
@@ -1307,65 +1301,19 @@ Provisioned IOPS SSD with **independent IOPS adjustment from volume size** and *
 
 **Best for**: High-performance, latency-sensitive workloads requiring small but fast volumes.
 
-## EBS HDD-based Volumes
+### EBS HDD-based Volumes
 
-### ST1 (Throughput Optimized)
-- **Optimized for throughput**.
-- **125GB to 16TB**.
-- **Max 500 IOPS**.
-- **Max 500 MB/s**.
-- **Credit-based**: **40 MB/s per TB base**, **250 MB/s per TB burst**.
-- **Cost-effective for frequently accessed workloads**.
+| Feature              | **ST1 (Throughput Optimized HDD)** | **SC1 (Cold HDD)** |
+|----------------------|---------------------------------|------------------|
+| **Optimized for**    | High-throughput workloads      | Cost-effective cold storage |
+| **Volume Size**      | 125 GB – 16 TB                 | 125 GB – 16 TB |
+| **Max IOPS**         | 500 IOPS                       | 250 IOPS |
+| **Max Throughput**   | 500 MB/s                       | 250 MB/s |
+| **Credit System**    | Yes: **40 MB/s per TB base**, **250 MB/s per TB burst** | Yes: **12 MB/s per TB base**, **80 MB/s per TB burst** |
+| **Best Use Case**    | Frequently accessed workloads (e.g., streaming, log processing) | Infrequent access (e.g., backups, long-term storage) |
 
-### SC1 (Cold HDD)
-- **Very cost-effective**.
-- **125GB to 16TB**.
-- **Max 250 IOPS**.
-- **Max 250 MB/s**.
-- **Credit-based**: **12 MB/s per TB base**, **80 MB/s per TB burst**.
-- **Best for infrequent access** (e.g., maximum a few scans per day).
 
-### Compare
-
-- For general-purpose workloads & boot volumes: GP3 (or GP2)
-- For high-throughput workloads (big data, streaming): ST1
-- For cold storage (backups, rarely accessed data): SC1
-
-## Instance Store Volumes
-
-- **Block storage devices physically connected to an EC2 host**.
-- **Only accessible by instances on that host**.
-- **Provides the highest storage performance in AWS**.
-- **Included in the instance price** but **must be attached at launch**.
-- **Data is lost if the host fails or the instance is moved** (ephemeral).
-
-Performance examples:
-- **D3 instances**: Up to **4.6 GB/s throughput**.
-- **I3 instances**: Up to **16 GB/s throughput**.
-- **Some instances**: Up to **2 million IOPS**!
-
-### Instance Store vs. EBS Comparison
-
-| Feature | EBS | Instance Store |
-|---------|-----|---------------|
-| Persistence | Yes | No |
-| Resilience | Yes | No |
-| Storage independent of instance lifecycle | Yes | No |
-| App-level resilience possible? | Depends | Depends |
-| Performance | Good | Best |
-| Cost | Higher | Included in instance price |
-
-### Key Concepts for Exam
-
-- **Most economical**: **ST1 or SC1**.
-- **Best for throughput/streaming**: **ST1**.
-- **Boot volumes**: **NOT ST1 or SC1**.
-- **GP2/GP3**: Up to **16,000 IOPS**.
-- **io1/io2**: Up to **64,000 IOPS** (up to **256,000 in some cases**).
-- **Multiple EBS (RAID0 + EBS)**: Up to **260,000 IOPS** (max per instance).
-- **For more than 260,000 IOPS**: Use **Instance Store**.
-
-## EBS Snapshots
+### EBS Snapshots
 
 Protects data and allows migration. Backup is stored in S3 and is resilient within the region.
 
@@ -1376,33 +1324,33 @@ Snapshots are **incremental**:
 
 ![alt text](images/ebs-snapshot.png)
 
-### Restoring from Snapshots 
+#### Restoring from Snapshots 
 - **Volumes can be created from snapshots** in the same or a different region.
 - **Snapshots can be copied between regions** for disaster recovery or migration.
 
-### Performance Considerations 
+#### Performance Considerations 
 - **New EBS volumes** provide full performance immediately.
 - **Restoring from a snapshot is lazy** – blocks are fetched on demand.
 - Two ways to optimize performance:
   1. **Pre-warm the volume** by reading all data before production use.
   2. **Use Fast Snapshot Restore (FSR)** for immediate performance (supports up to 50 snapshots per region at a higher cost).
 
-### Billing  
+#### Billing  
 - **Charged per gigabyte-month of used data** (not allocated space).
 - **Snapshot frequency does not impact cost** – taking a snapshot every 5 minutes costs the same as every hour.
 
-## EBS Encryption
+### EBS Encryption
 
 By default, **EBS volumes are not encrypted**, but they can be encrypted using AWS KMS.
 
-### Encryption Process 
+#### Encryption Process 
 1. When an EC2 instance starts, it requests KMS to **decrypt the Data Encryption Key (DEK)**.
 2. The DEK is stored in memory while the instance runs.
 3. Upon stopping the instance, the key is removed from memory.
 
 ![alt text](images/encryption-ebs-ec2.png)
 
-### Key Points
+#### Key Points
 - **Snapshots of encrypted volumes remain encrypted**.
 - **Any new volume created from an encrypted snapshot inherits encryption**.
 - **No additional cost for encryption**.
@@ -1410,6 +1358,36 @@ By default, **EBS volumes are not encrypted**, but they can be encrypted using A
 -  **Each EBS volume, snapshot, and copy gets a unique DEK. Encryption is inherited**, but AWS KMS generates a new DEK for each resource.
 - **Encrypted volumes cannot be converted to unencrypted**.
 - **The OS is unaware of encryption**, ensuring no performance impact.
+
+
+## Instance Store Volumes
+
+- **Block storage devices physically connected to an EC2 host (you get a dedicated instance store volume for instance)**.
+- **Only accessible by instances on that host**.
+- **Provides the highest storage performance in AWS**.
+- **Included in the instance price** but **must be attached at launch**.
+- **Data is lost if the host fails or the instance is moved** (ephemeral).
+
+Performance examples:
+- **D3 instances**: Up to **4.6 GB/s throughput**.
+- **I3 instances**: Up to **16 GB/s throughput**.
+- **Some instances**: Up to **2 million IOPS**!
+
+## Compare EBS and Instance Store Volumes
+
+- For general-purpose workloads & boot volumes: GP3 (or GP2)
+- For high-throughput workloads (big data, streaming): ST1
+- For cold storage (backups, rarely accessed data): SC1
+- For latency-sensitive, high-performance workloads requiring consistently high IOPS, such as databases and transactional applications: IO1 or IO2.
+
+
+- **Most economical**: **ST1 or SC1**.
+- **Best for throughput/streaming**: **ST1**.
+- **Boot volumes**: **NOT ST1 or SC1**.
+- **GP2/GP3**: Up to **16,000 IOPS**.
+- **io1/io2**: Up to **64,000 IOPS** (up to **256,000 in some cases**).
+- **Multiple EBS (RAID0 + EBS)**: Up to **260,000 IOPS** (max per instance).
+- **For more than 260,000 IOPS**: Use **Instance Store**.
 
 
 ## Elastic File System (EFS)
@@ -1499,9 +1477,18 @@ Every EC2 instance has at least **one Elastic Network Interface (ENI)**. Seconda
   - Pay for the **entire physical host**.
   - Useful for software **licensed per socket/core**.
   - Can configure instances to stay on the same host. 
+  - Dedicated hosts are assigned to specific instance sizes (e.g., a host may only support medium instances). However, Nitro-based instances allow mixing different instance sizes on the same host.
 - **Dedicated Instance**: 
   - Pay a **premium for single-tenant hardware**.
   - One-time regional fee.
+
+#### Limitations:
+- Certain AMIs (e.g., **SUSE Linux, Windows**) are **not supported**.
+- **Amazon RDS is not supported**.
+- **Placement groups cannot be used**.
+
+#### Resource Sharing:
+- You can **share dedicated hosts** with other accounts in the same organization using the **AWS Resource Access Manager (RAM).**
 
 ### Savings Plans 
 - Commit to an **hourly spend** for **1 or 3 years**.
@@ -1552,7 +1539,6 @@ Two status checks for each instance (shown as 2/2 checks passed):
 - Limited by the maximum instance size available
 
 ### Horizontal Scaling
-#### Advantages:
 - Can add multiple instances
 - No downtime during scaling
 - No upper limit on scaling
@@ -1566,9 +1552,7 @@ Two status checks for each instance (shown as 2/2 checks passed):
 
 
 ## Instance Metadata
-
-### Instance Metadata Service
-- Provides data about the instance, including:
+Instance Metadata Service provides data about the instance, including:
   - Instance configuration
   - Environment details
   - Networking information (including public IP)
@@ -1578,6 +1562,7 @@ Two status checks for each instance (shown as 2/2 checks passed):
 ### Access:
 - Available at: `http://169.254.169.254/latest/meta-data`
 - **Security Warning:** Metadata is not authenticated or encrypted
+- Not reachable outside the EC2 instance (link-local address)
 
 
 ## Bootstrapping
@@ -1586,13 +1571,11 @@ Bootstrapping automates system configuration, allowing an EC2 instance to self-c
 
 ### User Data
 - Provided to an EC2 instance at launch
-- Can be accessed via:
-  - `http://169.254.169.254/latest/meta-data` (for metadata)
-  - `http://169.254.169.254/latest/user-data` (for user data)
-- Executed only **once** at instance launch (not on reboot)
+- Can be accessed via: `http://169.254.169.254/latest/user-data` 
+- Executed only **once** (if defined as script) at instance launch (not on reboot)
 - Runs as the **root** user
 - Not validated, so incorrect scripts can cause configuration failures
-- **Security Warning:** User data is not secure—anyone with instance access can view it
+- **Security Warning:** User data is not secure—anyone with instance access can view it 
 
 ### User Data Limitations:
 - Maximum size: **16 KB** (for larger scripts, pass a script that downloads additional content)
@@ -1604,7 +1587,7 @@ Bootstrapping automates system configuration, allowing an EC2 instance to self-c
   - Bootstrapping (configures the instance at launch)
   - AMI baking (pre-configuring instances with required software)
   - A combination of both for flexibility
-  - 
+  -
 ### CloudFormation Init (cfn-init)
 - Another method for passing complex configurations to EC2 instances
 - Classified as a helper script
@@ -1616,7 +1599,7 @@ Bootstrapping automates system configuration, allowing an EC2 instance to self-c
 
 ![alt text](images/user-data-ec2.png)
 
-- `cfn-init` can monitor metadata for updates and adjust the instance accordingly
+- `cfn-init` can monitor CloudFormation metadata for updates and adjust the instance accordingly
 - Supports post-launch verification—CloudFormation waits for a success signal
 
 ![alt text](images/cfninit.png)
@@ -1659,7 +1642,7 @@ Bootstrapping automates system configuration, allowing an EC2 instance to self-c
 
 Parameter Store can also store sensitive information, so when should you use AWS Secrets Manager instead?
 
-AWS Secrets Manager is specifically designed for storing secrets, and you can manage it via the console, CLI, or API. It supports automatic rotation of secrets (using a Lambda function) and integrates with certain AWS services like Amazon RDS (when a password is rotated, the RDS service is automatically updated as well). All secrets are encrypted with KMS.
+AWS Secrets Manager is specifically designed for storing secrets, and you can manage it via the console, CLI, or API. It supports **automatic rotation of secrets** (using a Lambda function) and integrates with certain AWS services like Amazon RDS (when a password is rotated, the RDS service is automatically updated as well). All secrets are encrypted with KMS.
 
 
 ## Logging
@@ -1670,7 +1653,7 @@ What if we need to monitor activities inside the instance? By default, CloudWatc
 
 ## EC2 Placement Groups
 
-When you launch an instance, AWS determines its placement within the selected location. Placement groups allow you to influence this placement decision.
+When you launch an instance, AWS determines its placement within the selected location. Placement groups allow you to influence this placement decision.  
 
 ### Three types:
 
@@ -1690,21 +1673,6 @@ When you launch an instance, AWS determines its placement within the selected lo
   - Allows launching **hundreds of EC2 instances** per group.
   - You can specify a partition manually or let AWS assign it.
   - Ideal for large-scale distributed applications like **Cassandra**.
-
-## EC2 Dedicated Hosts
-
-A dedicated host is a physical server fully allocated to you, meaning you pay for the **entire host** rather than individual instances.
-
-- **Hardware awareness:** Dedicated hosts provide access to physical sockets and cores, which is useful for software licenses that require hardware-based licensing.
-- **Instance size constraints:** Dedicated hosts are assigned to specific instance sizes (e.g., a host may only support medium instances). However, **Nitro-based instances** allow mixing different instance sizes on the same host.
-
-### Limitations:
-- Certain AMIs (e.g., **SUSE Linux, Windows**) are **not supported**.
-- **Amazon RDS is not supported**.
-- **Placement groups cannot be used**.
-
-### Resource Sharing:
-- You can **share dedicated hosts** with other accounts in the same organization using the **AWS Resource Access Manager (RAM).**
 
 ## Enhanced Networking
 
