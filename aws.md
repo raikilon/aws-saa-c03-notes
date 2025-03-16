@@ -1721,15 +1721,19 @@ Both modes have:
 
 - **EC2 mode:** Uses EC2 instances with a container engine.  
   An ECS cluster is created inside a VPC (benefiting from multiple AZs). There is an Auto Scaling Group (ASG) that creates EC2 instances. Containers are deployed via tasks on the EC2 instances. You need to manage the cluster capacity and the hosts (you can use Spot pricing or Reserved EC2 instances).
+  - Best for large workloads and price-conscious deployments.
 - **Fargate:** A serverless approach—AWS manages a shared Fargate infrastructure, and you get resources from a shared pool. The network of these instances is injected into your VPC and has an elastic network interface.
-
-### EC2 vs. ECS vs. Fargate
-ECS is the container orchestration service, with two launch types:
-- **EC2 launch type:** Best for large workloads and price-conscious deployments.
-- **Fargate launch type:** Ideal for:
   - Large workloads where you want to minimize operational overhead.
   - Small/burst workloads.
   - Batch/periodic workloads.
+
+| **ECS Concept**         | **Kubernetes (K8s) Equivalent**      | **Description** |
+|-------------------------|----------------------------------|----------------|
+| **Task Definition**     | PodSpec (inside a Deployment, StatefulSet, or Job) | Defines the container(s), CPU/memory, networking, storage, and execution settings. |
+| **Task**               | Pod                              | A running instance of a Task Definition (just like a Pod runs from a PodSpec). |
+| **Service**            | Deployment / ReplicaSet         | Ensures that a specified number of tasks (pods) are running and replaces failed ones. |
+| **Cluster**            | Kubernetes Cluster             | A logical group of computing resources where containers run. |
+
 
 ## ECR - Elastic Container Registry
 
