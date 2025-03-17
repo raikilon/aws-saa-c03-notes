@@ -1846,6 +1846,9 @@ When creating a public hosted zone, Route 53 automatically assigns **four public
 
 ![walking the tree](images/route-54.png)
 
+-The Hosted Zone is like a Database (DB): It stores all DNS records (A, CNAME, MX, TXT, etc.), similar to how a database stores structured information.
+- The Name Servers are like Compute Units: They handle the actual DNS resolution by responding to queries and directing traffic to the correct IP address.
+
 ## Private Hosted Zones
 
 Similar to public hosted zones but only accessible via **VPCs** (which must be explicitly assigned). 
@@ -1871,7 +1874,7 @@ Many AWS services use a DNS name (e.g., ELBs). Since a CNAME cannot be used for 
 
 ## Simple Routing
 
-When using simple routing, when the hosted zone receives a request, it returns all the IPs randomly, and the user picks one.
+With simple routing, when the hosted zone receives a request, it returns all available IP addresses in random order, allowing the user's system to select one.
 
 You should use this when you want to route traffic to a single service, such as a web service → **NO HEALTH CHECKS**.
 
@@ -1981,7 +1984,7 @@ Uses **AWS KMS** to create **asymmetric keys** (public and private) in **us-east
 
 - Route 53 also creates a **ZSK private key** (automatically rotated).
 - Route 53 generates a **DNSKEY record** pointing to the KMS public key for verification.
-- Route 53 uses the **private KMS key** to create an **RRSIG DNSKEY**, which can be verified using the public key.
+- Route 53 uses the **private KMS key** to create an **RRSIG DNSKEY** (when a DNS request is made, Route 53 signs the response using the private KMS key), which can be verified using the public key.
 
 To ensure security, you must **make the TLD trust your zone**. It is important to set up **alarms** to detect issues with signing.
 
