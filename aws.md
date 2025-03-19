@@ -125,6 +125,44 @@ The compute tier consists of containers, Lambda functions, etc., which interact 
 
 ![alt text](images/region-architecture-tiers.png)
 
+# Database refresher
+
+- **Column** = Attribute  
+- **Row value** = Attribute value  
+
+Key-value databases are very fast and scalable.
+
+**Document database**: Documents have a structure, but each document can have a different structure. Each document has an ID.
+
+**Column databases**: SQL databases are row-based, meaning that to read one value from a row, you need to read the entire row to locate it (**Online Transaction Processing - OLTP**). Column-based databases, on the other hand, store values in columns (e.g., all order IDs are stored together), making them highly efficient for reporting (you can retrieve all values of one category very quickly). AWS uses **Redshift** for this purpose (usually, row-based databases are transformed into column-based ones for analytics). Wide column stores have a partition key and other keys (like DynamoDB in AWS). Every row should have the same key structure. These keys can be grouped into tables. Each row can have attributes, but they can vary from row to row.
+
+**Graph databases** are designed for relationship-based information. You can connect nodes with edges to describe relationships (these edges can also contain data).
+
+# ACID vs BASE
+
+These are transaction models that follow the **CAP theorem**: **Consistency, Availability, and Partition tolerance (resilience).** You can only pick two at the same time.
+
+- **ACID** = Focuses on **Consistency**
+- **BASE** = Focuses on **Availability**
+
+## ACID (Used in RDS)
+
+- **Atomic**: All components of a transaction either succeed or fail together.  
+- **Consistent**: Transactions move the database from one valid state to another valid state.  
+- **Isolated**: Transactions cannot interfere with each other.  
+- **Durable**: Once committed, transactions persist even if the database fails.  
+
+⚠ **Transactions in RDS have scaling limitations.**
+
+## BASE (Used in NoSQL)
+
+- **Basically Available**: Read and write operations are available as much as possible but without consistency guarantees.  
+- **Soft State**: The database does not enforce consistency; it's up to the developers.  
+- **Eventually Consistent**: If you wait long enough, reads will be consistent across all locations.  
+
+BASE offers **very high scalability and performance**. **DynamoDB** follows this model but also provides some ACID functionality through **DynamoDB transactions**.
+
+
 ---
 
 # IAM (Identity and Access Management)
@@ -1994,44 +2032,6 @@ You can also **enable DNSSEC validation for a VPC**—if something is invalid, i
 
 # Relational Database Service (RDS)
 
-## Refresher
-
-- **Column** = Attribute  
-- **Row value** = Attribute value  
-
-Key-value databases are very fast and scalable.
-
-Wide column stores (similar to key-value) have a partition key and other keys (like DynamoDB in AWS). Every row should have the same key structure. These keys can be grouped into tables. Each row can have attributes, but they can vary from row to row.
-
-**Document database**: Documents have a structure, but each document can have a different structure. Each document has an ID.
-
-**Column databases**: SQL databases are row-based, meaning that to read one value from a row, you need to read the entire row to locate it (**Online Transaction Processing - OLTP**). Column-based databases, on the other hand, store values in columns (e.g., all order IDs are stored together), making them highly efficient for reporting (you can retrieve all values of one category very quickly). AWS uses **Redshift** for this purpose (usually, row-based databases are transformed into column-based ones for analytics).
-
-**Graph databases** are designed for relationship-based information. You can connect nodes with edges to describe relationships (these edges can also contain data).
-
-## ACID vs BASE
-
-These are transaction models that follow the **CAP theorem**: **Consistency, Availability, and Partition tolerance (resilience).** You can only pick two at the same time.
-
-- **ACID** = Focuses on **Consistency**
-- **BASE** = Focuses on **Availability**
-
-### ACID (Used in RDS)
-
-- **Atomic**: All components of a transaction either succeed or fail together.  
-- **Consistent**: Transactions move the database from one valid state to another valid state.  
-- **Isolated**: Transactions cannot interfere with each other.  
-- **Durable**: Once committed, transactions persist even if the database fails.  
-
-⚠ **Transactions in RDS have scaling limitations.**
-
-### BASE (Used in NoSQL)
-
-- **Basically Available**: Read and write operations are available as much as possible but without consistency guarantees.  
-- **Soft State**: The database does not enforce consistency; it's up to the developers.  
-- **Eventually Consistent**: If you wait long enough, reads will be consistent across all locations.  
-
-BASE offers **very high scalability and performance**. **DynamoDB** follows this model but also provides some ACID functionality through **DynamoDB transactions**.
 
 ## Databases on EC2
 
@@ -2054,7 +2054,6 @@ If you run a service on an EC2 instance that includes a **database, application,
 
 ## RDS Architecture
 
-**Database as a Service (DBaaS)**
 
 - **RDS = Database Server as a Service (DBSaaS)** → You can have multiple databases on the same instance.  
 - Supports **MySQL, MariaDB, PostgreSQL, SQL Server, and Oracle** (*AWS Aurora is a separate service*).  
@@ -2079,8 +2078,6 @@ The cost of RDS depends on:
 ## Multi-AZ RDS (Traditional)
 
 Replicates synchronously to a **standby replica** in another AZ (same region). You access the database using the **database CNAME**, which always connects to the primary database.
-
-Backups are created from the **standby database** and stored in **S3**, then replicated across multiple AZs (this avoids extra load on the primary database).
 
 If the **primary database fails**, the **CNAME** is updated to point to the standby instance (which becomes the new primary). This switch happens at the **DNS level**, so **there is some delay**.
 
@@ -2118,7 +2115,7 @@ RDS backups are stored in **S3** but are **only visible in the RDS console** (no
 
 ## Read Replicas
 
-**Read-only** replicas of the RDS instance function as extra instances of a **multi-AZ cluster**. These replicas use **asynchronous replication** (the primary commits first, then replicates to read replicas).
+**Read-only** replicas of the RDS instance function as extra instances. These replicas use **asynchronous replication** (the primary commits first, then replicates to read replicas).
 
 ### Use Cases:
 - **Up to 5 read replicas per DB instance** for additional read performance.  
@@ -2195,12 +2192,12 @@ For **large databases**, **AWS Snowball** can be used with SCT for physical data
 
 Aurora is **distinct from RDS** and operates using a **cluster architecture** with **one primary instance** and **0+ replicas**. Replicas enhance **availability** and can also function as **read replicas**. Support MySQL and PostgresSQL.
 
-Aurora uses **cluster volumes** for storage (**no local storage**), which is accessible by all instances in the cluster. Each cluster maintains **6 copies** of data across **3 Availability Zones (AZs)** (supports up to **15 replicas**). 
+Aurora uses **cluster volumes** for storage (**no local storage** contrary to RDS which uses EBS volumes), which is accessible by all instances in the cluster. Each cluster maintains **6 copies** of data across **3 Availability Zones (AZs)** (supports up to **15 replicas**). 
 
 ### Key Features
 - **SSD-based storage**: Provides **high IOPS** and **low latency**.  
 - **Storage scaling**: **Up to 128 TB**, billed based on actual usage.  
-- **High water mark billing**: You are **charged based on peak storage utilization**.  
+  
 
 ![alt text](images/aurora.png)
 
@@ -2212,7 +2209,7 @@ Aurora uses **cluster volumes** for storage (**no local storage**), which is acc
 ### Pricing Model
 Aurora **does not** have a **free tier**. Pricing includes:  
 - **Hourly compute charges**  
-- **Storage costs per GB-month**  
+- **Storage costs per GB-month**: High water mark billing: You are **charged based on peak storage utilization**.
 - **I/O costs per request**  
 - **Free backup storage** (up to **100% of the database size** if the database is active)  
 
@@ -2280,6 +2277,8 @@ A table is a grouping of items with the same primary key (single value or compos
 - **Partition key**: This can be the only key (primary key).
 - **Sort key**: If present, it creates a composite primary key.
 
+![alt text](images/dynamo.png)
+
 ## Operation, Consistency, and Performance
 
 - **On-demand**: Best for unknown or unpredictable loads; you pay per million read or write units (more expensive than provisioned).
@@ -2343,7 +2342,7 @@ DAX is an in-memory caching layer integrated into DynamoDB.
 - **Cache types**:
   - **Item cache**: Used for `GetItem`.
   - **Query cache**: Stores query results.
-  - Cache hits return in microseconds, while misses take milliseconds.
+
   
 ## TTL (Time to Live)
 TTL enables the automatic deletion of items by setting an expiration timestamp (in seconds).
