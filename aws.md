@@ -1029,39 +1029,64 @@ A **traditional firewall** inside a **VPC**.
 
 ![alt text](images/security-group-reference.png)
 
+## NAT Gateway
 
-## Network Address Translation (NAT) & NAT Gateways
+A **NAT (Network Address Translation) Gateway** is an AWS-managed service that allows instances in a **private subnet** to **access the internet or AWS services** while blocking inbound traffic from the internet.
 
-A **process for remapping source/destination IPs** that **allows private CIDR ranges to access the internet**.
+### Why Use a NAT Gateway?
+Private instances **lack public IPs** and **cannot directly access the internet**. A NAT Gateway enables:
+- **Outbound internet access** for updates, patches, or external API calls.
+- **Access to AWS services** (without using public endpoints).
+- **Security** by preventing unsolicited inbound connections.
 
-### NAT Gateway
-- **Must be deployed in a public subnet**.
-- Uses **Elastic IPs** (static public IPv4).
-- Provides **outgoing internet access for private networks**.
-
-### IP Masquerading
-- **Hides private CIDR blocks behind a single public IP**.
-- **Useful due to IPv4 exhaustion**.
-
-### How NAT Works
-- If a private network **needs to reach the internet** (e.g., for updates), traffic is **redirected through a NAT Gateway** inside a **public network**.
-- The **route table directs non-internal traffic to the NAT Gateway**.
-
-![alt text](images/vpc-nat.png)
-
-### Resiliency Considerations
-- **A single NAT Gateway is only AZ-resilient**.
-- For **regional resilience**, deploy **one NAT Gateway per AZ** and configure **separate route tables**.
+### How NAT Gateway Works
+- **Deployed in a public subnet** and assigned an **Elastic IP (EIP)**.
+- **Private instances route outbound traffic** to the NAT Gateway via a **route table**.
+- The NAT Gateway **forwards traffic to the internet** using its **Elastic IP**.
+- **Inbound traffic from the internet is blocked**, ensuring security.
 
 ### NAT Instances (Legacy)
 - Uses an **EC2 instance** to filter traffic.
 - **Requires disabling Source/Destination checks**.
 - Can filter traffic using **both NACLs and SGs** (**NAT Gateways only support SGs**).
 
-### IPv6 & NAT
-- **NAT is not required for IPv6** (**does not work with IPv6**).
-- Instead, use **an Internet Gateway (IGW) and route `::/0` for bidirectional connectivity**. 
-- IPv6 is globally routable, meaning there are no truly "private" IPv6 addresses in a VPC like with IPv4, but inbound traffic can be restricted while allowing outbound connectivity using an Egress-Only Internet Gateway (EIGW).
+
+### NAT Gateway vs. NAT Instance
+| Feature | NAT Gateway | NAT Instance |
+|---------|------------|--------------|
+| **Scalability** | Automatically scales | Manual scaling required |
+| **High Availability** | AWS-managed, fault-tolerant | Requires manual HA setup |
+| **Performance** | Up to **45 Gbps** | Limited by instance type |
+| **Management** | Fully managed | Requires maintenance |
+| **Cost** | Higher | Lower but requires management |
+| **Security Filtering** | Supports **SGs only** | Supports **SGs and NACLs** |
+
+### IP Masquerading
+- **Hides private CIDR blocks behind a single public IP**.
+- **Useful due to IPv4 exhaustion**.
+
+### Resiliency Considerations
+- **Each NAT Gateway is AZ-specific** – For high availability, deploy **one per AZ**.
+- **Single NAT Gateway is not region-resilient** – Use **multiple NAT Gateways and separate route tables** for redundancy.
+
+### Cost Considerations
+- **Elastic IP required** – At least **one public subnet** is needed.
+- **Data transfer costs apply** – Use **VPC endpoints** for AWS service access to reduce costs.
+- **Only enables outbound access** – For IPv6, use an **Egress-Only Internet Gateway (EIGW)**.
+
+### NAT and IPv6
+- **NAT is not required for IPv6** (NAT Gateways do **not support IPv6**).
+- Instead, use:
+  - **Internet Gateway (IGW)** for bidirectional connectivity (`::/0` route).
+  - **Egress-Only Internet Gateway (EIGW)** to allow outbound traffic while blocking inbound connections.
+- IPv6 addresses are **globally routable**, meaning private IPv6 subnets do not require NAT. Instead, security is controlled via **routing and security groups**.
+
+### When to Use NAT Gateway?
+- **Private EC2 instances** need **internet access** but must **remain private**.
+- **You need automatic scaling and high availability**.
+- **You prefer a fully managed solution** with minimal maintenance.
+
+![alt text](images/vpc-nat.png)
 
 ## VPC Flow Logs
 
@@ -2399,7 +2424,7 @@ ELBs distribute workloads across compute instances and abstract failure manageme
 ### Key Features:
 - Supports **IPv4** or **dual-stack** configuration
 - When configured across **two or more Availability Zones (AZs),** it creates a node in each subnet
-- **Scales automatically** with load
+- **Scales automatically** with load (increases the number of ELB nodes)
 - Uses **DNS A records** that resolve to all ELB nodes equally
 - Can be configured as **public-facing** or **internal-only**
 - Each node has **listeners** that accept traffic on specified ports and protocols
@@ -2442,11 +2467,11 @@ NLB operates at **Layer 4 (Transport Layer)** and offers:
 - **Extremely high performance** (millions of requests per second)
 - **Static IP support** (beneficial for whitelisting)
 - **Unbroken SSL/TLS encryption**
-- **PrivateLink support** for cross-VPC services
+- **PrivateLink support**: provides secure, private connectivity between VPCs, enabling support for cross-VPC services without exposing traffic to the public internet or requiring VPC peering.
 
 ## SSL/TLS Configuration Options
 
-1. **Bridging (Default):**
+1. **Bridging (ALB only):**
    - **HTTPS listener**
    - **SSL termination at the load balancer**
    - **New SSL connection to instances**
@@ -2458,18 +2483,17 @@ NLB operates at **Layer 4 (Transport Layer)** and offers:
    - Instance-level certificates only
    - **No AWS access** to certificates
 
-3. **Offloading:**
+3. **Offloading (ALB only):**
    - Similar to bridging but uses **HTTP** between the load balancer and instances
    - **Reduces instance resource requirements**
    - **Certificates are only required at the load balancer level**
 
 ## Session Stickiness
 
-- Implemented via the **AWSALB cookie**
+- Implemented via the **ALB cookie**
 - Routes subsequent requests to the **same instance**
 - Terminates if the **instance fails** or the **cookie expires**
 - May cause **uneven load distribution**
-- **Best practice:** Design sessionless applications
 
 ## Gateway Load Balancer (GWLB)
 
@@ -2486,15 +2510,16 @@ GWLB facilitates the deployment and scaling of **third-party security appliances
 
 ![alt text](images/GWLB.png)
 
-ALB → Best for web applications that need host/path-based routing and SSL termination.
-NLB → Best for high-performance, low-latency applications, static IPs, and TCP-based services.
-GWLB → Best for security services (firewalls, IDS/IPS) and traffic inspection.
+| Load Balancer | Best For |
+|--------------|---------|
+| **ALB (Application Load Balancer)** | web applications that need **host/path-based routing** and **SSL termination**. |
+| **NLB (Network Load Balancer)** | **high-performance, low-latency applications**, **static IPs**, and **TCP-based services**. |
+| **GWLB (Gateway Load Balancer)** | **security services** (firewalls, IDS/IPS) and **traffic inspection**. |
 
 # API Gateway
 
 API Gateway helps **create, manage, and deploy APIs**.
 
-**Key Features:**
 - **Highly Available & Scalable**
 - **Authorization, throttling, caching, CORS, transformations**
 - **Supports REST and WebSocket APIs**
@@ -2506,12 +2531,12 @@ API Gateway helps **create, manage, and deploy APIs**.
 **Caching (per stage):** **Default TTL = 300s** (min: `0s`, max: `3600s`)  
 **Authentication:** Uses **Cognito** or a **Lambda Authorizer**
 
-### API Gateway Endpoint Types
+## API Gateway Endpoint Types
 - **Edge Optimized** → Routes requests via CloudFront for better performance
 - **Regional** → Directly reachable within an AWS Region
 - **Private** → Available only inside a **VPC** via an **Interface Endpoint**
 
-### Error Codes
+## Error Codes
 - **4xx** (Client Errors):  
   - `400` Bad Request  
   - `403` Access Denied  
@@ -2521,42 +2546,6 @@ API Gateway helps **create, manage, and deploy APIs**.
   - `503` Service Unavailable  
   - `504` Integration Timeout (29s limit)
 
-
-## NAT Gateway
-
-A **NAT (Network Address Translation) Gateway** is an AWS-managed service that allows instances in a **private subnet** to **access the internet or AWS services** while blocking inbound traffic from the internet.
-
-### Why Use a NAT Gateway?
-Private instances **do not have public IPs** and **cannot access the internet** by default. A NAT Gateway enables:
-- **Outbound internet access** for updates, patches, or external API calls.
-- **Access to AWS services** (without using public endpoints).
-- **Security** by preventing unsolicited inbound connections.
-
-### How NAT Gateway Works
-- The **NAT Gateway is created in a public subnet** and assigned an **Elastic IP (EIP)**.
-- **Private instances send outbound traffic** to the NAT Gateway via a **route table**.
-- The NAT Gateway **forwards traffic to the internet** using its Elastic IP.
-- **Inbound traffic from the internet is blocked**.
-
-### NAT Gateway vs. NAT Instance
-| Feature | NAT Gateway | NAT Instance |
-|---------|------------|--------------|
-| **Scalability** | Automatically scales | Manual scaling required |
-| **High Availability** | AWS-managed, fault-tolerant | Requires manual HA setup |
-| **Performance** | Up to **45 Gbps** | Limited by instance type |
-| **Management** | Fully managed | Requires maintenance |
-| **Cost** | Higher | Lower but requires management |
-
-### Key Considerations
-- **Each NAT Gateway is AZ-specific** – For high availability, deploy one per AZ.
-- **Requires an Elastic IP (EIP)** – Needs at least **one public subnet**.
-- **Traffic Costs** – Charges apply for **data transfer**. Use **VPC endpoints** to reduce costs.
-- **Only Enables Outbound Access** – For IPv6, use an **Egress-Only Internet Gateway**.
-
-### When to Use NAT Gateway?
-Private EC2 instances need **internet access** but must **remain private**.  
-You need **automatic scaling and high availability**.  
-You prefer a **fully managed solution** with minimal maintenance.  
 
 # Application Layer 7 Firewall
 
