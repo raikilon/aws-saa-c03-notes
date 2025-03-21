@@ -2553,8 +2553,6 @@ A traditional layer 3/4 firewall sees requests and responses as separate flows a
 
 A true layer 7 firewall can understand HTTP/HTTPS traffic at the application layer. For HTTPS, it can terminate the TLS session, inspect the decrypted traffic, and then re-encrypt it before sending it to the backend. Because it can see the application data, it can block specific content, detect abnormal patterns, or allow/deny specific application behaviors.
 
----
-
 ## Web Application Firewall (WAF)
 
 AWS WAF is Amazon’s layer 7 firewall implementation. It works with **web ACLs** (access control lists), which include various types of rules (managed or custom). You can update these rules manually or automate rule updates by analyzing firewall logs.
@@ -2572,6 +2570,16 @@ A **web ACL** has a default action—either “allow” or “block” all reque
 
 
 # Serverless and Application Services
+
+## Serverless Architecture
+
+Managing servers has a lot of overhead. **Serverless** helps eliminate this complexity.
+
+- Serverless functions run in **stateless** and **ephemeral** environments.
+- They are **easy to scale**.
+
+![alt text](images/serverless-architecture.png)
+
 
 ## Lambda
 
@@ -2653,17 +2661,6 @@ If the function is invoked frequently, the same execution context may be **reuse
 To **reduce cold starts**, AWS offers **Provisioned Concurrency**, which keeps pre-initialized execution contexts ready to serve requests.
 
 
-
-## Serverless Architecture
-
-Managing servers has a lot of overhead. **Serverless** helps eliminate this complexity.
-
-- Serverless functions run in **stateless** and **ephemeral** environments.
-- They are **easy to scale**.
-
-![alt text](images/serverless-architecture.png)
-
-
 ## Step Functions
 
 Lambda has limitations:
@@ -2683,7 +2680,7 @@ Step Functions use different **states** to define workflow logic:
 - **WAIT** → Delays execution for a specified time.
 - **CHOICE** → Branches execution based on conditions.
 - **PARALLEL** → Runs multiple actions **concurrently** and waits for all to complete.
-- **MAP** → Iterates over a list of inputs **(like a loop)**.
+- **MAP** → Iterates over a list of inputs.
 - **TASK** → Executes an action using another AWS service (e.g., Lambda, SNS, DynamoDB, ECS).
 
 ### Why Use Step Functions?
@@ -2759,7 +2756,6 @@ SQS Pricing
 
 # Difference Between EventBridge, SNS, and SQS
 
-AWS provides different messaging and event-driven services, including **EventBridge**, **SNS (Simple Notification Service)**, and **SQS (Simple Queue Service)**. Each has distinct use cases and characteristics.
 
 | Feature          | EventBridge | SNS | SQS |
 |-----------------|------------|-----|-----|
