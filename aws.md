@@ -2874,7 +2874,7 @@ Kinesis is a **real-time, scalable streaming service**.
 - **Can federate identities from external providers** (e.g., Google, Facebook, Amazon, SAML, OpenID Connect).
 
 **Use Case**:  
-- Instead of managing multiple authentication tokens, **Cognito User Pools** handle login, and **Identity Pools** exchange the user token for AWS credentials.
+Instead of managing multiple authentication tokens, Cognito User Pools handle user authentication, while Identity Pools exchange the user tokens for temporary AWS credentials.
 
 ![alt text](images/cognito-identity-pools.png)
 
@@ -2896,7 +2896,7 @@ You can have different modes:
 # AWS Glue
 
 **Serverless ETL (Extract, Transform, Load) service** for processing and moving data across different sources and destinations.  
-💡 *Not to be confused with AWS Data Pipeline (another ETL service).*
+*Not to be confused with AWS Data Pipeline (another ETL service).*
 
 **Key Features:**
 - **Moves and transforms data between sources & destinations**.
@@ -2948,7 +2948,7 @@ CloudFront is a **content delivery network (CDN)** used to reduce latency and im
 
 At the **behavior level**, you can configure:
 - Whether to accept **HTTP and HTTPS**, or **redirect HTTP to HTTPS**.
-- Allowed **HTTP methods** (e.g., GET, POST, PUT, etc.).
+- Allowed **HTTP methods** (e.g., GET, POST, PUT, etc.). POST, PUT, etc. forward the requests to the origin.
 - **Viewer access restrictions** using **trusted key groups** or a **trusted signer**.
 - **Cache settings**.
 
@@ -2989,15 +2989,9 @@ There are **two SSL connections** in CloudFront:
 1. **Viewer → CloudFront**
 2. **CloudFront → Origin** (both require **public certificates**, private ones do **not** work).
 
-### SNI (Server Name Indication) and Dedicated IP
-- **SNI** allows multiple websites to share the same **IP** by specifying the domain during the **TLS handshake**.
-- Older browsers that do not support SNI require a **dedicated IP for CloudFront** (which incurs additional costs).
-
-![alt text](images/claudfront-ssl.png)
-
 ## Origin Types
 
-CloudFront **fetches** data from an **origin** if it's not found in edge locations. You can create **origin groups** for **higher resilience**.
+CloudFront **fetches** data from an **origin** if it's not found in edge locations. You can create **origin groups** for **higher resilience** (define a primary and secondary, for failover, origin for your distribution).
 
 ### Categories of Origins:
 1. **S3**
@@ -3015,10 +3009,7 @@ CloudFront **fetches** data from an **origin** if it's not found in edge locatio
 
 ### Security from Origin to CloudFront
 #### For S3 Origins:
-- **Origin Access Identity (OAI)** (not applicable for S3 static websites).
-- OAI acts as an **IAM identity**.
-- Associated with a **CloudFront distribution**, allowing it to **access the S3 bucket**.
-- The S3 **bucket policy** should deny all direct access **except** requests from CloudFront’s OAI.
+For S3 origins, you can use an Origin Access Identity (OAI) to restrict direct access to your S3 bucket. OAI is a special CloudFront identity that, when associated with a distribution, allows CloudFront to securely fetch content from a private S3 bucket. The bucket policy should block all public access and allow access only through the OAI. Note: OAI does not work with S3 static website hosting endpoints
 
 ![alt text](images/cf-oai.png)
 
@@ -3051,7 +3042,7 @@ You can run **lightweight Lambda functions** at **edge locations** to **modify r
 
 ### Key Features:
 - **Supported languages**: **Node.js** and **Python**.
-- **No VPC** or **Lambda Layers** support.
+- **No VPC** or **Lambda Layers** (package and share code or dependencies separately from your main Lambda function code) support.
 - Common use cases:
   - A/B testing
   - Redirecting requests to different S3 origins
