@@ -3071,7 +3071,9 @@ Global Accelerator **optimizes data flow** between users and AWS infrastructure.
 
 **Global Accelerator minimizes the time spent on the public internet, reducing latency and improving reliability.**
 
-# Border Gateway Protocol (BGP)
+BGP (Border Gateway Protocol) ensures that traffic goes to the nearest one from a network topology perspective.
+
+## Border Gateway Protocol (BGP)
 
 BGP consists of multiple **autonomous systems (AS)**, which act as black boxes, abstracting away internal complexity.
 
