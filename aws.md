@@ -3290,14 +3290,14 @@ You can perform manual or automatic backups to S3.
 
 ## AWS Shield
 
-AWS Shield protects against DDoS attacks. **Shield Standard** (covering layers 3 and 4) is included at no additional cost. It mitigates large volumetric attacks (layer 3) and protocol attacks (layer 4). For layer 7 (application) attacks, you typically pair Shield with AWS WAF.
+AWS Shield protects against DDoS attacks. **Shield Standard** (covering layers 3 and 4) is included at no additional cost. It mitigates large volumetric attacks (layer 3) and protocol attacks (layer 4). For layer 7 (application) attacks, you typically pair Shield with AWS WAF (web application firewall).
 
 **Shield Advanced** costs \$3,000 per month for your organization (with a minimum one-year commitment). It must be explicitly enabled (it’s not automatic). It includes cost protection if your environment scales out during a DDoS attack, as well as proactive engagement from AWS. They will contact you if your service is adversely affected by a DDoS attack.
 
 
 ## CloudHSM
 
-**CloudHSM** is a single-tenant, AWS-provisioned hardware security module (HSM). KMS also uses HSMs under the hood, but CloudHSM gives you direct control of a dedicated module.
+**CloudHSM** is a AWS-provisioned hardware security module (HSM). KMS also uses HSMs under the hood, but CloudHSM gives you direct control of a dedicated module.
 
 - CloudHSM is **FIPS 140-2 Level 3** compliant (KMS is primarily Level 2, with some components at Level 3).  
 - AWS has no access to the secure area where your keys reside.  
